@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="tr">
 <head>
@@ -611,6 +610,13 @@
         let allCustomers = [];
         let filteredCustomers = [];
         
+        // ==================== DURUM ETİKETLERİ ====================
+        const statusLabelMap = {
+            'bekliyor': 'Ürün Bekleniyor',
+            'geldi': 'Ürün Geldi',
+            'arandi': 'Arandı'
+        };
+        
         // ==================== DURUM MESAJI GÖSTERME ====================
         function showStatus(message, type) {
             const statusEl = document.getElementById('statusMessage');
@@ -620,7 +626,7 @@
             
             setTimeout(() => {
                 statusEl.style.display = 'none';
-            }, 4000);
+            }, 5000);
         }
         
         // ==================== MÜŞTERİ EKLEME ====================
@@ -646,29 +652,31 @@
             addButton.disabled = true;
             addButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Ekleniyor...';
             
-            const statusLabels = {
-                'bekliyor': 'Ürün Bekleniyor',
-                'geldi': 'Ürün Geldi',
-                'arandi': 'Arandı'
-            };
-            
+            // Sadece temel alanları gönder - statusLabel'i sonradan ekleyelim
             const customerData = {
                 name: name,
                 phone: phone,
-                email: email,
+                email: email || '',
                 note: note,
                 status: status,
-                statusLabel: statusLabels[status] || 'Ürün Bekleniyor',
                 createdAt: new Date().toISOString(),
                 addedDate: new Date().toLocaleDateString('tr-TR')
             };
             
             try {
                 const { collection, addDoc } = window.firebaseModules;
-                await addDoc(collection(window.firebaseDb, "customers"), customerData);
+                const docRef = await addDoc(collection(window.firebaseDb, "customers"), customerData);
+                
+                // Başarılı oldu, şimdi statusLabel'i güncelle
+                const { doc, updateDoc } = window.firebaseModules;
+                await updateDoc(doc(window.firebaseDb, "customers", docRef.id), {
+                    statusLabel: statusLabelMap[status] || 'Ürün Bekleniyor'
+                });
                 
                 showStatus(`${name} başarıyla eklendi!`, "success");
                 customerForm.reset();
+                // Durum seçeneğini varsayılana döndür
+                customerStatus.value = 'bekliyor';
                 await loadCustomers();
             } catch (error) {
                 console.error("Müşteri eklenirken hata:", error);
@@ -682,6 +690,7 @@
         // ==================== FORM TEMİZLEME ====================
         clearButton.addEventListener('click', () => {
             customerForm.reset();
+            customerStatus.value = 'bekliyor';
             showStatus("Form temizlendi.", "success");
         });
         
@@ -741,13 +750,6 @@
                 `;
             }
         }
-        
-        // ==================== DURUM ETİKETLERİ ====================
-        const statusLabelMap = {
-            'bekliyor': 'Ürün Bekleniyor',
-            'geldi': 'Ürün Geldi',
-            'arandi': 'Arandı'
-        };
         
         // ==================== MÜŞTERİ LİSTESİNİ OLUŞTURMA ====================
         function renderCustomerList(customers) {
@@ -961,6 +963,7 @@
         document.addEventListener('DOMContentLoaded', function() {
             clearButton.addEventListener('click', () => {
                 customerForm.reset();
+                customerStatus.value = 'bekliyor';
                 showStatus("Form temizlendi.", "success");
             });
             
